@@ -12,7 +12,7 @@ import type {
 import { compilerService } from './runtime/compiler';
 import { Navbar } from './components/Navbar/Navbar';
 import { InfoPanel } from './components/InfoPanel/InfoPanel';
-import { ChevronLeft, Terminal } from 'lucide-react';
+import { ChevronLeft, Terminal, FileCode } from 'lucide-react';
 import { AdaEditor } from './components/Editor/AdaEditor';
 import { StatusBar } from './components/Editor/StatusBar';
 import { Console, type ConsoleTab } from './components/Console/Console';
@@ -404,8 +404,27 @@ export const App: React.FC = () => {
                 translations={t}
               />
 
-              {/* Editor Column: Monaco Editor + Status Bar */}
-              <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
+              {/* Editor Column: Editor Header + Monaco Editor + Status Bar */}
+              <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden bg-panel">
+                {/* Editor Tab Bar - Aligns perfectly with InfoPanel and Console h-9 headers */}
+                <div className="h-9 border-b border-border-theme bg-panel-subtle flex items-center justify-between text-xs flex-shrink-0 select-none relative z-10">
+                  <div className="flex items-center h-full">
+                    <div className="flex items-center gap-1.5 px-3 h-full bg-panel border-r border-border-theme font-medium text-txt-primary border-t-2 border-t-sky-500">
+                      <FileCode className="w-3.5 h-3.5 text-sky-500 flex-shrink-0" />
+                      <span className="font-mono text-xs">
+                        {activeExample ? `${activeExample.id}.adb` : 'main.adb'}
+                      </span>
+                      {isDirty && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-sky-500 ml-1" title="Cambios sin guardar" />
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pr-3 text-txt-muted text-[11px] font-sans">
+                    <span className="hidden sm:inline">Ada source</span>
+                  </div>
+                </div>
+
                 <div className="flex-1 relative overflow-hidden">
                   <AdaEditor
                     code={editorCode}

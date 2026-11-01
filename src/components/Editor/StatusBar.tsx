@@ -15,35 +15,35 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   translations: t,
 }) => {
   return (
-    <footer className="h-7 border-t border-border-theme bg-panel-subtle px-3 flex items-center justify-between text-xs text-txt-muted select-none flex-shrink-0 z-10 font-mono">
+    <footer className="h-7 border-t border-border-theme bg-panel-subtle px-3 flex items-center justify-between text-[11px] text-txt-muted select-none flex-shrink-0 z-10 font-mono whitespace-nowrap overflow-hidden">
       {/* Left indicators: File/Example & Cursor stats */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 min-w-0 flex-shrink-0">
         {/* Active Example / File */}
-        <div className="flex items-center gap-1.5 text-txt-secondary font-sans font-medium">
-          <FileCode className="w-3.5 h-3.5 text-sky-500" />
-          <span className="truncate max-w-[150px] sm:max-w-[200px]">
+        <div className="flex items-center gap-1.5 text-txt-secondary font-sans font-medium truncate max-w-[150px] sm:max-w-[200px]">
+          <FileCode className="w-3.5 h-3.5 text-sky-500 flex-shrink-0" />
+          <span className="truncate">
             {activeExampleTitle || t.statusBar.untitled}
           </span>
         </div>
 
-        <div className="h-3 w-px bg-border-theme hidden sm:block" />
+        <div className="h-3 w-px bg-border-theme hidden sm:block flex-shrink-0" />
 
         {/* Cursor Position */}
-        <div className="hidden sm:inline-block">
+        <div className="hidden sm:inline-block flex-shrink-0">
           {t.statusBar.line} {cursorPosition.line}, {t.statusBar.col} {cursorPosition.col}
         </div>
 
-        <div className="h-3 w-px bg-border-theme hidden md:block" />
+        <div className="h-3 w-px bg-border-theme hidden md:block flex-shrink-0" />
 
         {/* Line & Character Counts */}
-        <div className="hidden md:inline-block">
+        <div className="hidden md:inline-block flex-shrink-0">
           {cursorPosition.totalLines} {t.statusBar.lines} | {cursorPosition.charCount}{' '}
           {t.statusBar.chars}
         </div>
       </div>
 
       {/* Right indicators: Mode, Simulation badge, Encoding */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-shrink-0 ml-auto">
         {/* Language Standard */}
         <span className="hidden lg:inline-block text-[11px] text-txt-muted font-sans">
           Ada 2012 / 2022
