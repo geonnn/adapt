@@ -6,6 +6,7 @@ import {
   Trash2,
   ArrowDownCircle,
   Sparkles,
+  ChevronRight,
 } from 'lucide-react';
 import type { ConsoleEntry, TaskEvent } from '../../types';
 import type { TranslationSchema } from '../../i18n/translations';
@@ -20,6 +21,7 @@ export interface ConsoleProps {
   onClear: () => void;
   activeTab?: ConsoleTab;
   onTabChange?: (tab: ConsoleTab) => void;
+  onToggleCollapse?: () => void;
   translations: TranslationSchema;
 }
 
@@ -29,6 +31,7 @@ export const Console: React.FC<ConsoleProps> = ({
   onClear,
   activeTab: controlledActiveTab,
   onTabChange,
+  onToggleCollapse,
   translations: t,
 }) => {
   const [internalTab, setInternalTab] = useState<ConsoleTab>('output');
@@ -105,21 +108,22 @@ export const Console: React.FC<ConsoleProps> = ({
   return (
     <div className="w-full h-full flex flex-col bg-console-bg border-l border-border-theme overflow-hidden select-none">
       {/* Tab Header & Action Bar */}
-      <div className="h-9 border-b border-border-theme bg-panel-subtle px-2 flex items-center justify-between text-xs flex-shrink-0">
-        {/* Left Tabs */}
-        <div className="flex items-center gap-1">
+      <div className="h-9 border-b border-border-theme bg-panel-subtle px-2 flex items-center justify-between text-xs flex-shrink-0 gap-1 overflow-hidden select-none relative">
+        {/* Left Tabs (Shrinkable & scrollable on narrow widths) */}
+        <div className="flex items-center gap-1 min-w-0 flex-1 overflow-x-auto scrollbar-none py-1">
           <button
             onClick={() => setActiveTab('output')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-t-md font-medium transition-colors border-b-2 ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-t-md font-medium transition-colors border-b-2 flex-shrink-0 ${
               activeTab === 'output'
                 ? 'border-sky-500 text-txt-primary bg-panel font-semibold'
                 : 'border-transparent text-txt-muted hover:text-txt-primary'
             }`}
+            title={t.console.tabs.output}
           >
-            <Terminal className="w-3.5 h-3.5 text-sky-500" />
-            <span>{t.console.tabs.output}</span>
+            <Terminal className="w-3.5 h-3.5 text-sky-500 flex-shrink-0" />
+            <span className="truncate">{t.console.tabs.output}</span>
             {entries.length > 0 && (
-              <span className="ml-1 text-[10px] font-mono px-1 rounded-full bg-border-theme text-txt-muted">
+              <span className="ml-1 text-[10px] font-mono px-1 rounded-full bg-border-theme text-txt-muted flex-shrink-0">
                 {entries.length}
               </span>
             )}
@@ -127,16 +131,17 @@ export const Console: React.FC<ConsoleProps> = ({
 
           <button
             onClick={() => setActiveTab('tasks')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-t-md font-medium transition-colors border-b-2 ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-t-md font-medium transition-colors border-b-2 flex-shrink-0 ${
               activeTab === 'tasks'
                 ? 'border-sky-500 text-txt-primary bg-panel font-semibold'
                 : 'border-transparent text-txt-muted hover:text-txt-primary'
             }`}
+            title={t.console.tabs.tasks}
           >
-            <Activity className="w-3.5 h-3.5 text-emerald-500" />
-            <span>{t.console.tabs.tasks}</span>
+            <Activity className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+            <span className="truncate">{t.console.tabs.tasks}</span>
             {taskEvents.length > 0 && (
-              <span className="ml-1 text-[10px] font-mono px-1 rounded-full bg-emerald-500/20 text-emerald-400">
+              <span className="ml-1 text-[10px] font-mono px-1 rounded-full bg-emerald-500/20 text-emerald-400 flex-shrink-0">
                 {taskEvents.length}
               </span>
             )}
@@ -144,47 +149,64 @@ export const Console: React.FC<ConsoleProps> = ({
 
           <button
             onClick={() => setActiveTab('debugger')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-t-md font-medium transition-colors border-b-2 ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-t-md font-medium transition-colors border-b-2 flex-shrink-0 ${
               activeTab === 'debugger'
                 ? 'border-sky-500 text-txt-primary bg-panel font-semibold'
                 : 'border-transparent text-txt-muted hover:text-txt-primary'
             }`}
+            title={t.console.tabs.debugger}
           >
-            <Bug className="w-3.5 h-3.5 text-purple-500" />
-            <span>{t.console.tabs.debugger}</span>
+            <Bug className="w-3.5 h-3.5 text-purple-500 flex-shrink-0" />
+            <span className="truncate">{t.console.tabs.debugger}</span>
           </button>
         </div>
 
-        {/* Right Actions (Console output actions) */}
-        {activeTab === 'output' && (
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => {
-                const next = !autoScroll;
-                setAutoScroll(next);
-                if (next && scrollContainerRef.current) {
-                  scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
-                }
-              }}
-              className={`p-1 rounded hover:bg-panel transition-colors ${
-                autoScroll ? 'text-sky-500' : 'text-txt-muted hover:text-txt-primary'
-              }`}
-              title={`${t.console.autoScroll}: ${autoScroll ? 'ON' : 'OFF'}`}
-              aria-label={t.console.autoScroll}
-            >
-              <ArrowDownCircle className="w-4 h-4" />
-            </button>
+        {/* Right Actions (Pinned with flex-shrink-0 - always visible on right edge) */}
+        <div className="flex items-center gap-1 flex-shrink-0 ml-auto z-10 bg-panel-subtle pl-1.5 py-1">
+          {activeTab === 'output' && (
+            <>
+              <button
+                onClick={() => {
+                  const next = !autoScroll;
+                  setAutoScroll(next);
+                  if (next && scrollContainerRef.current) {
+                    scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+                  }
+                }}
+                className={`p-1 rounded hover:bg-panel transition-colors flex-shrink-0 ${
+                  autoScroll ? 'text-sky-500' : 'text-txt-muted hover:text-txt-primary'
+                }`}
+                title={`${t.console.autoScroll}: ${autoScroll ? 'ON' : 'OFF'}`}
+                aria-label={t.console.autoScroll}
+              >
+                <ArrowDownCircle className="w-4 h-4" />
+              </button>
 
-            <button
-              onClick={onClear}
-              className="p-1 rounded text-txt-muted hover:text-rose-500 hover:bg-panel transition-colors"
-              title={t.console.clearShortcut}
-              aria-label={t.console.clear}
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </div>
-        )}
+              <button
+                onClick={onClear}
+                className="p-1 rounded text-txt-muted hover:text-rose-500 hover:bg-panel transition-colors flex-shrink-0"
+                title={t.console.clearShortcut}
+                aria-label={t.console.clear}
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </>
+          )}
+
+          {onToggleCollapse && (
+            <>
+              <div className="h-3.5 w-px bg-border-theme mx-0.5 flex-shrink-0" />
+              <button
+                onClick={onToggleCollapse}
+                className="p-1 rounded text-txt-muted hover:text-txt-primary hover:bg-panel transition-colors flex-shrink-0"
+                title={t.console.collapse}
+                aria-label={t.console.collapse}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Tab Contents */}

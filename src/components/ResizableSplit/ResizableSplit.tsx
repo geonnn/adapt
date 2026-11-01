@@ -8,6 +8,8 @@ export interface ResizableSplitProps {
   minRatio?: number;
   maxRatio?: number;
   onResize?: (ratio: number) => void;
+  isRightCollapsed?: boolean;
+  rightCollapsedContent?: React.ReactNode;
 }
 
 const STORAGE_KEY = 'adaPT_splitRatio';
@@ -23,6 +25,8 @@ export const ResizableSplit: React.FC<ResizableSplitProps> = ({
   minRatio = MIN_RATIO,
   maxRatio = MAX_RATIO,
   onResize,
+  isRightCollapsed = false,
+  rightCollapsedContent,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -145,43 +149,55 @@ export const ResizableSplit: React.FC<ResizableSplitProps> = ({
     >
       {/* Left Pane (Editor + Info Panel) */}
       <div
-        className="h-full flex flex-row overflow-hidden"
-        style={{ width: `${ratio * 100}%`, minWidth: `${minRatio * 100}%` }}
+        className="h-full flex flex-row overflow-hidden min-w-0"
+        style={
+          isRightCollapsed
+            ? { flex: 1, width: '100%' }
+            : { width: `${ratio * 100}%`, minWidth: `${minRatio * 100}%` }
+        }
       >
         {left}
       </div>
 
-      {/* Draggable Divider */}
-      <div
-        role="separator"
-        aria-orientation="vertical"
-        aria-valuenow={Math.round(ratio * 100)}
-        aria-valuemin={Math.round(minRatio * 100)}
-        aria-valuemax={Math.round(maxRatio * 100)}
-        aria-label="Panel splitter"
-        tabIndex={0}
-        onPointerDown={handlePointerDown}
-        onDoubleClick={handleDoubleClick}
-        onKeyDown={handleKeyDown}
-        className={`w-1.5 flex-shrink-0 cursor-col-resize flex items-center justify-center relative select-none z-10 transition-colors group focus:outline-none focus:ring-1 focus:ring-sky-500 ${
-          isDragging ? 'bg-sky-500' : 'bg-gutter hover:bg-sky-500 active:bg-sky-600'
-        }`}
-        title="Arrastra para redimensionar (doble clic para restablecer al 60%)"
-      >
-        <div className="flex flex-col gap-1 items-center pointer-events-none opacity-40 group-hover:opacity-100 transition-opacity">
-          <div className="w-0.5 h-0.5 rounded-full bg-txt-muted" />
-          <div className="w-0.5 h-0.5 rounded-full bg-txt-muted" />
-          <div className="w-0.5 h-0.5 rounded-full bg-txt-muted" />
+      {/* Draggable Divider (Only rendered when right panel is expanded) */}
+      {!isRightCollapsed && (
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-valuenow={Math.round(ratio * 100)}
+          aria-valuemin={Math.round(minRatio * 100)}
+          aria-valuemax={Math.round(maxRatio * 100)}
+          aria-label="Panel splitter"
+          tabIndex={0}
+          onPointerDown={handlePointerDown}
+          onDoubleClick={handleDoubleClick}
+          onKeyDown={handleKeyDown}
+          className={`w-1.5 flex-shrink-0 cursor-col-resize flex items-center justify-center relative select-none z-10 transition-colors group focus:outline-none focus:ring-1 focus:ring-sky-500 ${
+            isDragging ? 'bg-sky-500' : 'bg-gutter hover:bg-sky-500 active:bg-sky-600'
+          }`}
+          title="Arrastra para redimensionar (doble clic para restablecer al 60%)"
+        >
+          <div className="flex flex-col gap-1 items-center pointer-events-none opacity-40 group-hover:opacity-100 transition-opacity">
+            <div className="w-0.5 h-0.5 rounded-full bg-txt-muted" />
+            <div className="w-0.5 h-0.5 rounded-full bg-txt-muted" />
+            <div className="w-0.5 h-0.5 rounded-full bg-txt-muted" />
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Right Pane (Console + Previews) */}
-      <div
-        className="h-full flex flex-col overflow-hidden"
-        style={{ width: `${(1 - ratio) * 100}%`, minWidth: `${(1 - maxRatio) * 100}%` }}
-      >
-        {right}
-      </div>
+      {/* Right Pane (Console + Previews, or Collapsed Strip) */}
+      {isRightCollapsed ? (
+        <div className="h-full flex-shrink-0 flex flex-col z-10">
+          {rightCollapsedContent}
+        </div>
+      ) : (
+        <div
+          className="h-full flex flex-col overflow-hidden min-w-0"
+          style={{ width: `${(1 - ratio) * 100}%`, minWidth: `${(1 - maxRatio) * 100}%` }}
+        >
+          {right}
+        </div>
+      )}
     </div>
   );
 };
