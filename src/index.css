@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light dark;
+}
+
+:root,
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-tertiary: #f1f5f9;
+  --bg-hover: #e2e8f0;
+  --border-color: #cbd5e1;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --accent-color: #0284c7;
+  --accent-hover: #0369a1;
+
+  --bg-app: #ffffff;
+  --bg-navbar: #f8fafc;
+  --bg-panel: #ffffff;
+  --bg-panel-subtle: #f1f5f9;
+  --bg-gutter: #e2e8f0;
+  --bg-gutter-hover: #38bdf8;
+  --border-subtle: #cbd5e1;
+
+  --editor-bg: #ffffff;
+  --console-bg: #f8fafc;
+  --console-text: #0f172a;
+  --console-border: #e2e8f0;
+  --status-bar-bg: #f1f5f9;
+
+  --monaco-theme: vs;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-primary: #1e1e1e;
+  --bg-secondary: #252526;
+  --bg-tertiary: #2d2d30;
+  --bg-hover: #37373d;
+  --border-color: #3e3e42;
+  --text-primary: #cccccc;
+  --text-secondary: #94a3b8;
+  --text-muted: #858585;
+  --accent-color: #007acc;
+  --accent-hover: #1f8ad2;
+
+  --bg-app: #1e1e1e;
+  --bg-navbar: #181818;
+  --bg-panel: #1e1e1e;
+  --bg-panel-subtle: #252526;
+  --bg-gutter: #2d2d30;
+  --bg-gutter-hover: #38bdf8;
+  --border-subtle: #3f3f46;
+
+  --editor-bg: #1e1e1e;
+  --console-bg: #141414;
+  --console-text: #cccccc;
+  --console-border: #27272a;
+  --status-bar-bg: #007acc;
+
+  --monaco-theme: vs-dark;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
