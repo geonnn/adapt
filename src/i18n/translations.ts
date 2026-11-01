@@ -64,6 +64,8 @@ export interface TranslationSchema {
       simulationNotice: string;
       customNotice: string;
     };
+    collapse: string;
+    expand: string;
     emptyState: string;
   };
   modal: {
@@ -124,7 +126,7 @@ export const translations: Record<Language, TranslationSchema> = {
       col: 'Col',
       lines: 'líneas',
       chars: 'caracteres',
-      simulationMode: 'Modo Simulación',
+      simulationMode: 'GNAT 14.2',
       untitled: 'Personalizado',
       encoding: 'UTF-8',
       indent: 'Espacios: 3',
@@ -150,6 +152,8 @@ export const translations: Record<Language, TranslationSchema> = {
         customNotice:
           '⚠ Salida de ejecución no disponible para código arbitrario en modo simulación.',
       },
+      collapse: 'Colapsar panel derecho',
+      expand: 'Expandir panel derecho',
       emptyState:
         'Haz clic en "Ejecutar" o presiona Ctrl+Enter para compilar y ejecutar el código.',
     },
@@ -212,7 +216,7 @@ export const translations: Record<Language, TranslationSchema> = {
       col: 'Col',
       lines: 'lines',
       chars: 'characters',
-      simulationMode: 'Simulation Mode',
+      simulationMode: 'GNAT 14.2',
       untitled: 'Custom',
       encoding: 'UTF-8',
       indent: 'Spaces: 3',
@@ -238,6 +242,8 @@ export const translations: Record<Language, TranslationSchema> = {
         customNotice:
           '⚠ Execution output not available for custom code in simulation mode.',
       },
+      collapse: 'Collapse right panel',
+      expand: 'Expand right panel',
       emptyState: 'Click "Run" or press Ctrl+Enter to compile and run code.',
     },
     modal: {

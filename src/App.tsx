@@ -12,6 +12,7 @@ import type {
 import { compilerService } from './runtime/compiler';
 import { Navbar } from './components/Navbar/Navbar';
 import { InfoPanel } from './components/InfoPanel/InfoPanel';
+import { ChevronLeft, Terminal, FileCode } from 'lucide-react';
 import { AdaEditor } from './components/Editor/AdaEditor';
 import { StatusBar } from './components/Editor/StatusBar';
 import { Console, type ConsoleTab } from './components/Console/Console';
@@ -20,6 +21,7 @@ import { ConfirmDialog } from './components/Modal/ConfirmDialog';
 
 const CODE_STORAGE_KEY = 'adaPT_code';
 const EXAMPLE_STORAGE_KEY = 'adaPT_activeExampleId';
+const RIGHT_PANEL_STORAGE_KEY = 'adaPT_rightPanelCollapsed';
 
 let entrySequence = 0;
 
@@ -80,6 +82,32 @@ export const App: React.FC = () => {
   const [consoleEntries, setConsoleEntries] = useState<ConsoleEntry[]>([]);
   const [taskEvents, setTaskEvents] = useState<TaskEvent[]>([]);
   const [activeTab, setActiveTab] = useState<ConsoleTab>('output');
+
+  // Right panel collapsed state
+  const [isRightCollapsed, setIsRightCollapsed] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem(RIGHT_PANEL_STORAGE_KEY);
+      return stored === 'true';
+    } catch (e) {
+      console.warn('Unable to read right panel state from localStorage', e);
+      return false;
+    }
+  });
+
+  const toggleRightCollapse = useCallback(() => {
+    setIsRightCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(RIGHT_PANEL_STORAGE_KEY, String(next));
+      } catch (e) {
+        console.warn('Unable to persist right panel state to localStorage', e);
+      }
+      setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+      }, 50);
+      return next;
+    });
+  }, []);
 
   // Modal dialog state
   const [modalState, setModalState] = useState<{
@@ -232,6 +260,15 @@ export const App: React.FC = () => {
 
     // Switch to Output console tab
     setActiveTab('output');
+    if (isRightCollapsed) {
+      setIsRightCollapsed(false);
+      try {
+        localStorage.setItem(RIGHT_PANEL_STORAGE_KEY, 'false');
+      } catch {
+        // ignore
+      }
+      setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+    }
     setIsRunning(true);
     setTaskEvents([]);
 
@@ -326,6 +363,38 @@ export const App: React.FC = () => {
       {/* Main Resizable Workspace */}
       <main className="flex-1 overflow-hidden relative">
         <ResizableSplit
+          isRightCollapsed={isRightCollapsed}
+          rightCollapsedContent={
+            <aside
+              className="w-11 flex-shrink-0 h-full border-l border-border-theme bg-panel-subtle flex flex-col items-center py-3 select-none transition-all duration-200 ease-in-out z-10"
+              aria-label={t.console.expand}
+            >
+              <button
+                onClick={toggleRightCollapse}
+                className="p-1.5 rounded-lg border border-border-theme bg-panel hover:bg-panel-subtle text-txt-primary hover:text-sky-500 transition-colors focus:outline-none focus:ring-1 focus:ring-sky-500"
+                title={t.console.expand}
+                aria-label={t.console.expand}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              <div className="flex-1 flex items-center justify-center py-4">
+                <span
+                  className="text-xs font-semibold tracking-wider text-txt-muted uppercase whitespace-nowrap"
+                  style={{ writingMode: 'vertical-rl' }}
+                >
+                  {t.console.title}
+                </span>
+              </div>
+
+              <div className="p-1 text-txt-muted relative">
+                <Terminal className="w-4 h-4 opacity-50" />
+                {consoleEntries.length > 0 && (
+                  <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-sky-500 ring-2 ring-panel" />
+                )}
+              </div>
+            </aside>
+          }
           left={
             <>
               {/* Collapsible Info Panel */}
@@ -335,8 +404,27 @@ export const App: React.FC = () => {
                 translations={t}
               />
 
-              {/* Editor Column: Monaco Editor + Status Bar */}
-              <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
+              {/* Editor Column: Editor Header + Monaco Editor + Status Bar */}
+              <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden bg-panel">
+                {/* Editor Tab Bar - Aligns perfectly with InfoPanel and Console h-9 headers */}
+                <div className="h-9 border-b border-border-theme bg-panel-subtle flex items-center justify-between text-xs flex-shrink-0 select-none relative z-10">
+                  <div className="flex items-center h-full">
+                    <div className="flex items-center gap-1.5 px-3 h-full bg-panel border-r border-border-theme font-medium text-txt-primary border-t-2 border-t-sky-500">
+                      <FileCode className="w-3.5 h-3.5 text-sky-500 flex-shrink-0" />
+                      <span className="font-mono text-xs">
+                        {activeExample ? `${activeExample.id}.adb` : 'main.adb'}
+                      </span>
+                      {isDirty && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-sky-500 ml-1" title="Cambios sin guardar" />
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pr-3 text-txt-muted text-[11px] font-sans">
+                    <span className="hidden sm:inline">Ada source</span>
+                  </div>
+                </div>
+
                 <div className="flex-1 relative overflow-hidden">
                   <AdaEditor
                     code={editorCode}
@@ -361,6 +449,7 @@ export const App: React.FC = () => {
               onClear={handleClearConsole}
               activeTab={activeTab}
               onTabChange={setActiveTab}
+              onToggleCollapse={toggleRightCollapse}
               translations={t}
             />
           }

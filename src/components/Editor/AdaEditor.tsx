@@ -131,6 +131,39 @@ export const AdaEditor: React.FC<AdaEditorProps> = ({
     };
   }, []);
 
+  // Guard against Monaco positioning context-views/tooltips at negative top (clipped under top bar)
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const observer = new MutationObserver(() => {
+      const contextViews = container.querySelectorAll<HTMLElement>('.context-view');
+      contextViews.forEach((cv) => {
+        const topVal = parseFloat(cv.style.top || '0');
+        if (topVal < 0) {
+          const isReplace = !!container.querySelector('.find-widget.replaceToggled');
+          cv.style.top = isReplace ? '78px' : '47px';
+          const pointer = cv.querySelector<HTMLElement>('.workbench-hover-pointer');
+          if (pointer) {
+            pointer.style.top = '-3px';
+            pointer.style.bottom = 'auto';
+            pointer.classList.remove('bottom');
+            pointer.classList.add('top');
+          }
+        }
+      });
+    });
+
+    observer.observe(container, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['style', 'class'],
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div ref={containerRef} className="w-full h-full relative overflow-hidden bg-panel">
       <Editor
@@ -156,8 +189,18 @@ export const AdaEditor: React.FC<AdaEditorProps> = ({
           renderLineHighlight: 'all',
           cursorBlinking: 'smooth',
           smoothScrolling: true,
-          padding: { top: 8, bottom: 8 },
+          fixedOverflowWidgets: true,
+          padding: { top: 12, bottom: 12 },
           bracketPairColorization: { enabled: true },
+          find: {
+            addExtraSpaceOnTop: true,
+            seedSearchStringFromSelection: 'always',
+            autoFindInSelection: 'multiline',
+          },
+          hover: {
+            enabled: true,
+            above: false,
+          },
         }}
       />
     </div>
