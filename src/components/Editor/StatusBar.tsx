@@ -49,8 +49,8 @@ export const StatusBar: React.FC<StatusBarProps> = ({
           Ada 2012 / 2022
         </span>
 
-        {/* Simulation Badge */}
-        <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[10px] font-semibold font-sans">
+        {/* Compiler Engine Badge */}
+        <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-[10px] font-semibold font-sans">
           <Cpu className="w-3 h-3" />
           <span>{t.statusBar.simulationMode}</span>
         </div>

@@ -640,11 +640,11 @@ export function interpretPutLine(code: string): {
 /**
  * Streams preprogrammed example outputs and synchronizes TaskEvents.
  */
-async function streamExample(
+export async function streamExample(
   example: Example,
   options: RunOptions,
   signal: AbortSignal,
-  lineDelayMs: number
+  lineDelayMs: number = DEFAULT_LINE_DELAY_MS
 ): Promise<void> {
   const rawLines = example.expectedOutput.split(/\r?\n/);
   const lines = rawLines.length > 0 && rawLines[rawLines.length - 1] === ''
@@ -703,11 +703,11 @@ async function streamExample(
 /**
  * Streams sequential lines of text to onOutput.
  */
-async function streamLines(
+export async function streamLines(
   lines: string[],
   options: RunOptions,
   signal: AbortSignal,
-  lineDelayMs: number
+  lineDelayMs: number = DEFAULT_LINE_DELAY_MS
 ): Promise<void> {
   for (const line of lines) {
     await sleep(lineDelayMs, signal);
@@ -716,6 +716,66 @@ async function streamLines(
       text: line,
     });
   }
+}
+
+export const GODBOLT_API_URL = 'https://godbolt.org/api/compiler/gnat142/compile';
+
+export interface GodboltOutputItem {
+  text: string;
+  tag?: {
+    file: string;
+    line: number;
+    column: number;
+    text: string;
+    severity: number;
+  };
+}
+
+export interface GodboltCompileResponse {
+  code: number;
+  didExecute: boolean;
+  stdout?: GodboltOutputItem[];
+  stderr?: GodboltOutputItem[];
+  buildResult?: {
+    code: number;
+    stdout?: GodboltOutputItem[];
+    stderr?: GodboltOutputItem[];
+    timedOut?: boolean;
+  };
+}
+
+/**
+ * Compiles and executes Ada source code via the official GNAT 14.2 remote API (Compiler Explorer).
+ */
+export async function executeViaGodbolt(
+  code: string,
+  signal?: AbortSignal
+): Promise<GodboltCompileResponse> {
+  const payload = {
+    source: code,
+    options: {
+      userArguments: '-gnatws',
+      executeParameters: { args: [], stdin: '' },
+      compilerOptions: { executorRequest: true },
+      filters: { execute: true },
+    },
+  };
+
+  const response = await fetch(GODBOLT_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(payload),
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Compiler API returned HTTP ${response.status}: ${response.statusText}`);
+  }
+
+  return (await response.json()) as GodboltCompileResponse;
 }
 
 /**
@@ -780,13 +840,11 @@ export const compilerService: CompilerService = {
       combinedController.abort();
     }, timeoutMs);
 
-    const lineDelayMs = (options as any).lineDelayMs ?? DEFAULT_LINE_DELAY_MS;
-
     try {
       // 1. Initial banner
       options.onOutput({
         stream: 'system',
-        text: '[Simulation Mode] Plan B Runtime',
+        text: '[GNAT 14.2] Remote Execution Engine (Compiler Explorer)',
       });
 
       // Immediate check if aborted
@@ -800,62 +858,128 @@ export const compilerService: CompilerService = {
         }
       }
 
-      // 2. Smart Example Matching
-      const matchedExample = findMatchingExample(code, options);
-
-      if (matchedExample) {
-        await streamExample(matchedExample, options, combinedController.signal, lineDelayMs);
-
-        options.onOutput({
-          stream: 'banner-success',
-          text: '✓ Program exited with code 0',
-        });
-        return { exitCode: 0 };
+      // If active example has task events, emit them for concurrency timelines
+      if (options.activeExample?.taskEvents && options.onTaskEvent) {
+        for (const ev of options.activeExample.taskEvents) {
+          options.onTaskEvent(ev);
+        }
       }
 
-      // 3. Custom Code: First verify syntax compilation
-      const compileResult = await this.compile(code);
-      if (!compileResult.success) {
+      // 2. Execute via remote GNAT 14.2 compiler API
+      const result = await executeViaGodbolt(code, combinedController.signal);
+
+      // Check if user cancelled while waiting for network response
+      if (combinedController.signal.aborted) {
+        if (userStopped) {
+          options.onOutput({
+            stream: 'warning',
+            text: '⏹ Execution stopped by user',
+          });
+          return { exitCode: 130, stoppedByUser: true };
+        }
+      }
+
+      const buildResult = result.buildResult;
+
+      // Check for compilation errors
+      const hasBuildErrors =
+        (buildResult && buildResult.code !== 0) ||
+        (buildResult?.stderr &&
+          buildResult.stderr.some((s) => s.tag?.severity === 3 || s.text.includes('error:')));
+
+      if (hasBuildErrors) {
+        const stderrItems = buildResult?.stderr ?? [];
+        const errorLines: string[] = [];
+
+        for (const item of stderrItems) {
+          if (item.tag && item.tag.severity === 3) {
+            errorLines.push(`[ERROR] line ${item.tag.line}:${item.tag.column} — ${item.tag.text}`);
+          } else if (item.text.includes('error:')) {
+            const cleanText = item.text.replace(/^[a-zA-Z0-9_.-]+:/, '').trim();
+            errorLines.push(`[ERROR] ${cleanText}`);
+          }
+        }
+
         options.onOutput({
           stream: 'banner-error',
-          text: `✗ Compilation failed (${compileResult.errors.length} error${
-            compileResult.errors.length > 1 ? 's' : ''
+          text: `✗ GNAT compilation failed (${errorLines.length || 1} error${
+            errorLines.length > 1 ? 's' : ''
           })`,
         });
 
-        for (const err of compileResult.errors) {
-          options.onOutput({
-            stream: 'stderr',
-            text: `[ERROR] line ${err.line}:${err.col} — ${err.message}`,
-          });
+        if (errorLines.length > 0) {
+          for (const err of errorLines) {
+            options.onOutput({ stream: 'stderr', text: err });
+          }
+        } else {
+          for (const item of stderrItems) {
+            options.onOutput({ stream: 'stderr', text: item.text });
+          }
         }
 
         return { exitCode: 1 };
       }
 
-      // 4. Sequential Put_Line Interpreter
-      const interpResult = interpretPutLine(code);
-
-      if (interpResult.success && interpResult.lines.length > 0) {
-        await streamLines(interpResult.lines, options, combinedController.signal, lineDelayMs);
-
-        options.onOutput({
-          stream: 'banner-success',
-          text: '✓ Program exited with code 0',
-        });
-        return { exitCode: 0 };
+      // Report any compilation warnings if present
+      if (buildResult?.stderr) {
+        for (const item of buildResult.stderr) {
+          if (item.tag && item.tag.severity === 2) {
+            options.onOutput({
+              stream: 'warning',
+              text: `[WARNING] line ${item.tag.line}:${item.tag.column} — ${item.tag.text}`,
+            });
+          }
+        }
       }
 
-      // 5. Unmodeled arbitrary code or code without Put_Line
-      options.onOutput({
-        stream: 'warning',
-        text: '[Simulation Mode] ⚠ Execution output not available for custom code in simulation mode.',
-      });
-      options.onOutput({
-        stream: 'system',
-        text: 'Tip: Select an example from the library to explore concurrent simulation and task event timelines.',
-      });
+      // 3. Process execution output
+      if (result.didExecute) {
+        const stdoutItems = result.stdout ?? [];
+        const stderrItems = result.stderr ?? [];
 
+        if (stdoutItems.length === 0 && stderrItems.length === 0) {
+          options.onOutput({
+            stream: 'system',
+            text: '(Program executed successfully with no standard output)',
+          });
+        } else {
+          for (const item of stdoutItems) {
+            if (combinedController.signal.aborted) break;
+            await sleep(40, combinedController.signal);
+            options.onOutput({
+              stream: 'stdout',
+              text: item.text,
+            });
+          }
+
+          for (const item of stderrItems) {
+            if (combinedController.signal.aborted) break;
+            options.onOutput({
+              stream: 'stderr',
+              text: item.text,
+            });
+          }
+        }
+
+        if (result.code === 0) {
+          options.onOutput({
+            stream: 'banner-success',
+            text: '✓ Program exited with code 0',
+          });
+        } else {
+          options.onOutput({
+            stream: 'banner-error',
+            text: `✗ Program terminated with exit code ${result.code}`,
+          });
+        }
+
+        return { exitCode: result.code };
+      }
+
+      options.onOutput({
+        stream: 'banner-success',
+        text: '✓ [GNAT 14.2] Compiled successfully',
+      });
       return { exitCode: 0 };
     } catch (err: unknown) {
       if (userStopped || (err instanceof DOMException && err.name === 'AbortError' && !timedOut)) {
